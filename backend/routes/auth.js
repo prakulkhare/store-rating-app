@@ -1,94 +1,87 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const db = require('../config/database');
 const { validateUser } = require('../middleware/validation');
+const jwt = require('jsonwebtoken');
+const { authenticateToken } = require('../middleware/auth');
+const db = require('../config/database');
 
 const router = express.Router();
 
-router.post('/register', validateUser, (req, res) => {
-  const { name, email, password, address, role = 'user' } = req.body;
-  
-  db.query('SELECT id FROM users WHERE email = ?', [email], async (err, results) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    if (results.length > 0) return res.status(400).json({ error: 'User already exists' });
-    
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    
-    db.query(
-      'INSERT INTO users (name, email, password, address, role) VALUES (?, ?, ?, ?, ?)',
-      [name, email, hashedPassword, address, role],
-      (err, results) => {
-        if (err) return res.status(500).json({ error: 'Error creating user' });
-
-        const token = jwt.sign(
-          { id: results.insertId, email, role },
-          process.env.JWT_SECRET || 'your-secret-key',
-          { expiresIn: '24h' }
-        );
-        
-        res.status(201).json({ message: 'User created', token });
-      }
-    );
-  });
-});
-
-
-router.post('/login', (req, res) => {
-  const { email, password } = req.body;
-  
-  
-  db.query('SELECT * FROM users WHERE email = ?', [email], async (err, results) => {
-    if (err) return res.status(500).json({ error: 'Database error' });
-    if (results.length === 0) return res.status(400).json({ error: 'Invalid credentials' });
-    
-    const user = results[0];
-    
-    
-    const isValidPassword = await bcrypt.compare(password, user.password);
-    if (!isValidPassword) return res.status(400).json({ error: 'Invalid credentials' });
-    
-    
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role },
-      process.env.JWT_SECRET || 'your-secret-key',
-      { expiresIn: '24h' }
-    );
-    
-    res.json({ 
-      message: 'Login successful', 
-      token,
-      user: {
-        id: user.id,
-        name: user.name,
-        email: user.email,
-        role: user.role
-      }
-    });
-  });
-});
-
-router.get('/verify', (req, res) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-
-  if (!token) {
-    return res.status(401).json({ error: 'Access token required' });
-  }
-
-  jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key', (err, decoded) => {
-    if (err) {
-      return res.status(403).json({ error: 'Invalid or expired token' });
+// Register endpoint
+router.post('/register', validateUser, async (req, res) => {
+  const { name, email, password, address, role } = req.body; // accept role if sent
+  try {
+    const rows = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
+    if (rows.length > 0) {
+      return res.status(400).json({ error: 'User already exists' });
     }
-    
-    db.query('SELECT id, name, email, role FROM users WHERE id = ?', [decoded.id], (err, results) => {
-      if (err) return res.status(500).json({ error: 'Database error' });
-      if (results.length === 0) return res.status(404).json({ error: 'User not found' });
-      
-      res.json({ user: results[0] });
+    const hashedPassword = await bcrypt.hash(password, 10);
+    // Default role to 'user' if not provided
+    const userRole = role || 'user';
+    await db.execute(
+      'INSERT INTO users (name, email, password, address, role) VALUES (?, ?, ?, ?, ?)',
+      [name, email, hashedPassword, address, userRole]
+    );
+    // Fetch inserted user to get id
+    const inserted = await db.execute('SELECT id, name, email, address, role FROM users WHERE email = ?', [email]);
+    const user = inserted[0];
+    const token = jwt.sign(
+      { id: user.id, name: user.name, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    res.status(201).json({ 
+      message: 'User registered successfully',
+      token,
+      user: { id: user.id, name: user.name, email: user.email, address: user.address, role: user.role }
     });
-  });
+  } catch (err) {
+    console.error('Register DB error:', err);
+    res.status(500).json({ error: 'Database error', details: err.message, sql: err.sqlMessage });
+  }
+});
+
+// Login endpoint
+router.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+  try {
+    const rows = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
+    console.log('Login query result:', rows); // Debug log
+    if (!rows || !Array.isArray(rows) || rows.length === 0) {
+      return res.status(400).json({ error: 'Invalid email or password' });
+    }
+    const user = rows[0];
+    if (!user || !user.password) {
+      return res.status(400).json({ error: 'Invalid email or password' });
+    }
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ error: 'Invalid email or password' });
+    }
+    const token = jwt.sign(
+      { id: user.id, name: user.name, email: user.email, role: user.role },
+      process.env.JWT_SECRET || 'your-secret-key',
+      { expiresIn: '7d' }
+    );
+    res.json({ message: 'Login successful', token, user: { id: user.id, name: user.name, email: user.email, address: user.address, role: user.role } });
+  } catch (err) {
+    console.error('Login DB error:', err);
+    res.status(500).json({ error: 'Database error', details: err.message, sql: err.sqlMessage });
+  }
+});
+
+// Verify token and return current user
+router.get('/verify', authenticateToken, async (req, res) => {
+  try {
+    const rows = await db.execute('SELECT id, name, email, address, role FROM users WHERE id = ?', [req.user.id]);
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    res.json({ user: rows[0] });
+  } catch (err) {
+    console.error('Verify error:', err);
+    res.status(500).json({ error: 'Database error', details: err.message, sql: err.sqlMessage });
+  }
 });
 
 module.exports = router;

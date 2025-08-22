@@ -8,12 +8,12 @@ const Register = () => {
     email: '',
     password: '',
     confirmPassword: '',
-    address: ''
+    address: '',
+    role: 'user'
   });
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   
-  const { register } = useAuth();
+  const { register, showNotification } = useAuth();
   const navigate = useNavigate();
 
   const handleChange = (e) => {
@@ -25,28 +25,49 @@ const Register = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (formData.password !== formData.confirmPassword) {
-      return setError('Passwords do not match');
+
+    const newErrors = [];
+
+    if (formData.name.length < 20) {
+      newErrors.push('Name must be at least 20 characters');
     }
-    
+    if (formData.name.length > 60) {
+      newErrors.push('Name must be no more than 60 characters');
+    }
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.push('Passwords do not match');
+    }
+    if (formData.address.length > 400) {
+      newErrors.push('Address must be less than 400 characters');
+    }
+
+    if (newErrors.length > 0) {
+      // Show first error as notification
+      showNotification(newErrors[0], 'error');
+      return;
+    }
+
     try {
-      setError('');
       setLoading(true);
       const result = await register({
         name: formData.name,
         email: formData.email,
         password: formData.password,
-        address: formData.address
+        address: formData.address,
+        role: formData.role
       });
-      
-      if (result.success) {
-        navigate('/user');
-      } else {
-        setError(result.error);
+
+      if (result.success && result.user) {
+        const role = result.user.role;
+        const destination = role === 'admin' 
+          ? '/admin' 
+          : role === 'store_owner' 
+            ? '/store-owner' 
+            : '/user';
+        navigate(destination);
       }
     } catch (err) {
-      setError('Failed to create account');
+      console.error('Registration error:', err);
     }
     setLoading(false);
   };
@@ -57,10 +78,13 @@ const Register = () => {
         <div className="card">
           <div className="card-body">
             <h2 className="text-center mb-4">Register</h2>
-            {error && <div className="alert alert-danger">{error}</div>}
+            
             <form onSubmit={handleSubmit}>
               <div className="mb-3">
-                <label htmlFor="name" className="form-label">Full Name (20-60 characters)</label>
+                <label htmlFor="name" className="form-label">
+                  Full Name (20-60 characters)
+                  <span className="text-muted"> - {formData.name.length}/60</span>
+                </label>
                 <input
                   type="text"
                   className="form-control"
@@ -72,7 +96,26 @@ const Register = () => {
                   maxLength="60"
                   required
                 />
+                <div className="form-text">
+                  Current length: {formData.name.length} characters
+                </div>
               </div>
+              
+              <div className="mb-3">
+                <label htmlFor="role" className="form-label">Role</label>
+                <select
+                  id="role"
+                  name="role"
+                  className="form-select"
+                  value={formData.role}
+                  onChange={handleChange}
+                >
+                  <option value="user">Normal User</option>
+                  <option value="store_owner">Store Owner</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
               <div className="mb-3">
                 <label htmlFor="email" className="form-label">Email</label>
                 <input
@@ -85,8 +128,12 @@ const Register = () => {
                   required
                 />
               </div>
+              
               <div className="mb-3">
-                <label htmlFor="address" className="form-label">Address (max 400 characters)</label>
+                <label htmlFor="address" className="form-label">
+                  Address (max 400 characters)
+                  <span className="text-muted"> - {formData.address.length}/400</span>
+                </label>
                 <textarea
                   className="form-control"
                   id="address"
@@ -97,7 +144,11 @@ const Register = () => {
                   rows="3"
                   required
                 />
+                <div className="form-text">
+                  Current length: {formData.address.length} characters
+                </div>
               </div>
+              
               <div className="mb-3">
                 <label htmlFor="password" className="form-label">Password</label>
                 <input
@@ -107,10 +158,14 @@ const Register = () => {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="8-16 chars, 1 uppercase, 1 special char"
+                  placeholder="8-16 characters, 1 uppercase, 1 special character (!@#$%^&*)"
                   required
                 />
+                <div className="form-text">
+                  Must include: uppercase letter, special character (!@#$%^&*), 8-16 characters
+                </div>
               </div>
+              
               <div className="mb-3">
                 <label htmlFor="confirmPassword" className="form-label">Confirm Password</label>
                 <input
@@ -123,6 +178,7 @@ const Register = () => {
                   required
                 />
               </div>
+              
               <button 
                 disabled={loading} 
                 className="btn btn-primary w-100" 
@@ -131,6 +187,7 @@ const Register = () => {
                 {loading ? 'Creating Account...' : 'Register'}
               </button>
             </form>
+            
             <div className="text-center mt-3">
               <Link to="/login">Already have an account? Login here</Link>
             </div>

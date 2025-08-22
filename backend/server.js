@@ -22,7 +22,26 @@ app.get('/api/test', (req, res) => {
   res.json({ message: 'Server is running!' });
 });
 
+app.get('/api/health', (req, res) => {
+  res.json({ 
+    status: 'OK', 
+    timestamp: new Date().toISOString(),
+    database: 'Check connection in console' 
+  });
+});
+
+app.use((err, req, res, next) => {
+  console.error(err.stack);
+  res.status(500).json({ error: 'Something went wrong!' });
+});
+
+app.use((req, res) => {
+  res.status(404).json({ error: 'Endpoint not found' });
+});
+
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Test the server at: http://localhost:${PORT}/api/test`);
+  console.log(`Health check at: http://localhost:${PORT}/api/health`);
+  console.log('If you see database errors, make sure MySQL is running and configured properly.');
 });

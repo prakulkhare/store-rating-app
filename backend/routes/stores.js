@@ -63,7 +63,6 @@ router.post('/', authenticateToken, authorizeRoles(['admin']), async (req, res) 
       return res.status(400).json({ error: 'Store already exists' });
     }
 
-    // Validate owner exists and is a store_owner
     const ownerCheck = await db.query('SELECT id, role FROM users WHERE id = ?', [owner_id]);
     if (!ownerCheck || ownerCheck.length === 0) {
       return res.status(400).json({ error: 'Invalid store owner' });

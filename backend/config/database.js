@@ -1,7 +1,6 @@
 const mysql = require('mysql2');
 require('dotenv').config();
 
-// Create a connection pool instead of a single connection
 const pool = mysql.createPool({
   host: process.env.DB_HOST || 'localhost',
   user: process.env.DB_USER || 'root',
@@ -12,7 +11,6 @@ const pool = mysql.createPool({
   queueLimit: 0
 });
 
-// Test the connection
 pool.getConnection((err, connection) => {
   if (err) {
     console.error('Error connecting to MySQL:', err.message);
@@ -26,7 +24,6 @@ pool.getConnection((err, connection) => {
   connection.release();
 });
 
-// Promisify for async/await
 const promisePool = pool.promise();
 
 module.exports = {

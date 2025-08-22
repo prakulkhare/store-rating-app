@@ -7,22 +7,22 @@ const db = require('../config/database');
 
 const router = express.Router();
 
-// Register endpoint
+
 router.post('/register', validateUser, async (req, res) => {
-  const { name, email, password, address, role } = req.body; // accept role if sent
+  const { name, email, password, address, role } = req.body;
   try {
     const rows = await db.execute('SELECT id FROM users WHERE email = ?', [email]);
     if (rows.length > 0) {
       return res.status(400).json({ error: 'User already exists' });
     }
     const hashedPassword = await bcrypt.hash(password, 10);
-    // Default role to 'user' if not provided
+    
     const userRole = role || 'user';
     await db.execute(
       'INSERT INTO users (name, email, password, address, role) VALUES (?, ?, ?, ?, ?)',
       [name, email, hashedPassword, address, userRole]
     );
-    // Fetch inserted user to get id
+    
     const inserted = await db.execute('SELECT id, name, email, address, role FROM users WHERE email = ?', [email]);
     const user = inserted[0];
     const token = jwt.sign(
@@ -41,12 +41,11 @@ router.post('/register', validateUser, async (req, res) => {
   }
 });
 
-// Login endpoint
 router.post('/login', async (req, res) => {
   const { email, password } = req.body;
   try {
     const rows = await db.execute('SELECT * FROM users WHERE email = ?', [email]);
-    console.log('Login query result:', rows); // Debug log
+    console.log('Login query result:', rows); 
     if (!rows || !Array.isArray(rows) || rows.length === 0) {
       return res.status(400).json({ error: 'Invalid email or password' });
     }
@@ -70,7 +69,6 @@ router.post('/login', async (req, res) => {
   }
 });
 
-// Verify token and return current user
 router.get('/verify', authenticateToken, async (req, res) => {
   try {
     const rows = await db.execute('SELECT id, name, email, address, role FROM users WHERE id = ?', [req.user.id]);

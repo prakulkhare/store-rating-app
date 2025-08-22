@@ -42,7 +42,7 @@ const Register = () => {
     }
 
     if (newErrors.length > 0) {
-      // Show first error as notification
+      
       showNotification(newErrors[0], 'error');
       return;
     }

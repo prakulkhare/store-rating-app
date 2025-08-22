@@ -10,7 +10,7 @@ const ProtectedRoute = ({ children, requiredRole }) => {
   }
 
   if (requiredRole && currentUser.role !== requiredRole) {
-    // If user is logged in but has wrong role, redirect to their allowed dashboard
+    
     switch (currentUser.role) {
       case 'admin':
         return <Navigate to="/admin" replace />;

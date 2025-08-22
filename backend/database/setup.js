@@ -10,7 +10,6 @@ const connection = mysql.createConnection({
 
 console.log('Attempting to create database and tables...');
 
-// Read the schema file
 const fs = require('fs');
 const path = require('path');
 const schema = fs.readFileSync(path.join(__dirname, 'schema.sql'), 'utf8');

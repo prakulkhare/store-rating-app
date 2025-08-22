@@ -37,9 +37,8 @@ const validateUser = (req, res, next) => {
     errors.push('Invalid role');
   }
   
-  // console.log('Validation errors:', errors); 
   if (errors.length > 0) {
-    console.log('Validation errors:', errors); // <-- Uncommented for debugging
+    console.log('Validation errors:', errors);
     return res.status(400).json({ errors });
   }
   

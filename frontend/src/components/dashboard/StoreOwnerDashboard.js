@@ -210,7 +210,6 @@ const StoreOwnerDashboard = () => {
         </>
       )}
 
-      {/* Change Password Modal */}
       {showPasswordModal && (
         <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1">
           <div className="modal-dialog">
@@ -289,7 +288,6 @@ const StoreOwnerDashboard = () => {
         </div>
       )}
 
-      {/* Modal Backdrop */}
       {showPasswordModal && (
         <div className="modal-backdrop fade show"></div>
       )}

@@ -94,7 +94,6 @@ const AdminDashboard = () => {
       return;
     }
 
-    // Require an explicit store owner via email or dropdown selection
     let ownerIdToSend = newStore.owner_id ? parseInt(newStore.owner_id, 10) : undefined;
     if (!ownerIdToSend && newStoreOwnerEmail.trim()) {
       const matchByEmail = users.find(

@@ -237,7 +237,6 @@ const UserDashboard = () => {
         </div>
       )}
 
-      {/* Change Password Modal */}
       {showPasswordModal && (
         <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1">
           <div className="modal-dialog">

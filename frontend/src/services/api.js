@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'https://store-rating-app-dua5.onrender.com/';
 
 export const authAPI = {
   verify: () => axios.get(`${API_BASE_URL}/auth/verify`),
